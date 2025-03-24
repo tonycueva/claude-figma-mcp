@@ -1,0 +1,32 @@
+# Source files
+src/
+tsconfig.json
+
+# Development scripts
+direct-start.js
+launch-mcp.sh
+fix.sh
+setup-executable.sh
+make-executable.sh
+build.sh
+
+# Git files
+.git/
+.gitignore
+
+# Build artifacts
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Environment files
+.env
+env.example
+
+# Figma plugin development files - these should be a separate package
+figma-plugin/

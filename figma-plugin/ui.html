@@ -1,0 +1,335 @@
+<!-- ui.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Figma Plugin</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .status-dot.connected {
+      background-color: #1DB954;
+    }
+    
+    .status-dot.disconnected {
+      background-color: #F24822;
+    }
+    
+    .section {
+      background-color: #F5F5F5;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    
+    .section-title {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .info-label {
+      font-weight: 500;
+      color: #666;
+    }
+    
+    .info-value {
+      font-weight: 400;
+      color: #333;
+    }
+    
+    button {
+      background-color: #18A0FB;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    button:hover {
+      background-color: #0D8AF0;
+    }
+    
+    button:disabled {
+      background-color: #CCCCCC;
+      cursor: not-allowed;
+    }
+    
+    .log-container {
+      max-height: 150px;
+      overflow-y: auto;
+      background-color: #F5F5F5;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .log-entry {
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    
+    .log-time {
+      color: #666;
+      margin-right: 4px;
+    }
+    
+    .log-message {
+      word-break: break-word;
+    }
+    
+    .log-message.error {
+      color: #F24822;
+    }
+    
+    .log-message.success {
+      color: #1DB954;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main">
+    <div class="header">
+      <h2 id="plugin-title">Claude MCP Integration</h2>
+      <div class="status" aria-live="polite">
+        <div class="status-dot disconnected" id="status-dot" inert></div>
+        <span id="status-text">Disconnected</span>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h3 class="section-title">Connection Status</h3>
+      <div class="info-row">
+        <span class="info-label">MCP Server:</span>
+        <span class="info-value" id="server-status">Not connected</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Last Activity:</span>
+        <span class="info-value" id="last-activity">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Commands Processed:</span>
+        <span class="info-value" id="commands-count">0</span>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h3 class="section-title">Current Selection</h3>
+      <div class="info-row">
+        <span class="info-label">Type:</span>
+        <span class="info-value" id="selection-type">None</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Name:</span>
+        <span class="info-value" id="selection-name">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">ID:</span>
+        <span class="info-value" id="selection-id">-</span>
+      </div>
+    </div>
+    
+    <button id="connect-button" aria-label="Connect to MCP Server">Connect to MCP Server</button>
+    
+    <div class="section">
+      <h3 class="section-title">Activity Log</h3>
+      <div class="log-container" id="log-container"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Fix for Canvas2D performance warning
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
+      if (contextType === '2d') {
+        contextAttributes = contextAttributes || {};
+        contextAttributes.willReadFrequently = true;
+      }
+      return originalGetContext.call(this, contextType, contextAttributes);
+    };
+    
+    // State
+    let connected = false;
+    let commandsCount = 0;
+    
+    // DOM Elements
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const serverStatus = document.getElementById('server-status');
+    const lastActivity = document.getElementById('last-activity');
+    const commandsCountEl = document.getElementById('commands-count');
+    const selectionType = document.getElementById('selection-type');
+    const selectionName = document.getElementById('selection-name');
+    const selectionId = document.getElementById('selection-id');
+    const connectButton = document.getElementById('connect-button');
+    const logContainer = document.getElementById('log-container');
+    
+    // Add log entry
+    function addLogEntry(message, type = 'info') {
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      
+      const time = new Date().toLocaleTimeString();
+      
+      const logTime = document.createElement('span');
+      logTime.className = 'log-time';
+      logTime.textContent = `[${time}]`;
+      
+      const logMessage = document.createElement('span');
+      logMessage.className = `log-message ${type}`;
+      logMessage.textContent = message;
+      
+      logEntry.appendChild(logTime);
+      logEntry.appendChild(logMessage);
+      
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    // Update connection status
+    function updateConnectionStatus(isConnected, fallbackMode = false) {
+      connected = isConnected;
+      
+      statusDot.className = `status-dot ${isConnected ? 'connected' : 'disconnected'}`;
+      statusText.textContent = isConnected ? 
+        (fallbackMode ? 'Connected (Fallback)' : 'Connected') : 
+        'Disconnected';
+      serverStatus.textContent = isConnected ? 
+        (fallbackMode ? 'Connected (HTTP Fallback)' : 'Connected') : 
+        'Not connected';
+      connectButton.textContent = isConnected ? 'Disconnect' : 'Connect to MCP Server';
+      
+      if (isConnected && !fallbackMode) {
+        addLogEntry('Connected to MCP server', 'success');
+      } else if (isConnected && fallbackMode) {
+        addLogEntry('Connected using fallback mode', 'success');
+      } else {
+        addLogEntry('Disconnected from MCP server');
+      }
+    }
+    
+    // Update last activity time
+    function updateLastActivity() {
+      const time = new Date().toLocaleTimeString();
+      lastActivity.textContent = time;
+    }
+    
+    // Handle selection change
+    function updateSelection(selection) {
+      if (selection) {
+        selectionType.textContent = selection.type || 'None';
+        selectionName.textContent = selection.name || '-';
+        selectionId.textContent = selection.id || '-';
+      } else {
+        selectionType.textContent = 'None';
+        selectionName.textContent = '-';
+        selectionId.textContent = '-';
+      }
+    }
+    
+    // Event listeners
+    connectButton.addEventListener('click', () => {
+      parent.postMessage({ pluginMessage: { type: 'connect' } }, '*');
+    });
+    
+    // Listen for messages from the plugin
+    window.onmessage = (event) => {
+      const message = event.data.pluginMessage;
+      
+      if (!message) return;
+      
+      switch (message.type) {
+        case 'connected':
+          updateConnectionStatus(true, message.fallbackMode);
+          break;
+          
+        case 'disconnected':
+          updateConnectionStatus(false);
+          const reason = message.reason ? `: ${message.reason}` : '';
+          const code = message.code ? ` (Code: ${message.code})` : '';
+          addLogEntry(`Disconnected from MCP server${code}${reason}`);
+          break;
+          
+        case 'selection':
+          updateSelection(message.selection);
+          break;
+          
+        case 'command':
+          commandsCount++;
+          commandsCountEl.textContent = commandsCount;
+          updateLastActivity();
+          addLogEntry(`Command received: ${message.command}`);
+          break;
+          
+        case 'response':
+          updateLastActivity();
+          if (message.error) {
+            addLogEntry(`Error: ${message.error}`, 'error');
+          } else {
+            addLogEntry(`Response sent: ${message.success ? 'Success' : 'Failed'}`, message.success ? 'success' : 'error');
+          }
+          break;
+          
+        case 'log':
+          addLogEntry(message.message, message.level || 'info');
+          break;
+      }
+    };
+    
+    // Initial setup
+    addLogEntry('Plugin initialized');
+  </script>
+</body>
+</html>

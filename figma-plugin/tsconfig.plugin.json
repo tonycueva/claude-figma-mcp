@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "none",
+    "lib": ["ES6", "DOM"],
+    "strict": true,
+    "typeRoots": ["../node_modules/@figma/plugin-typings"],
+    "noImplicitAny": false,
+    "outDir": "./",
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": ["code.ts", "figma.d.ts"],
+  "exclude": []
+}
