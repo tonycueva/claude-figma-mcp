@@ -15,14 +15,15 @@
     "start": "node dist/index.js",
     "start:cli": "cross-env NODE_ENV=cli node dist/index.js",
     "start:http": "node dist/index.js",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/claude-figma-mcp.git"
+    "url": "git+https://github.com/tonycueva/claude-figma-mcp.git"
   },
   "keywords": [
     "figma",
@@ -30,7 +31,7 @@
     "claude",
     "typescript"
   ],
-  "author": "",
+  "author": "Tony Cueva",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
@@ -45,9 +46,11 @@
   "devDependencies": {
     "@figma/plugin-typings": "^1.109.0",
     "@types/cors": "^2.8.17",
+    "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.11",
     "@types/ws": "^8.18.0",
+    "@types/yargs": "^17.0.33",
     "typescript": "^5.8.2"
   }
 }

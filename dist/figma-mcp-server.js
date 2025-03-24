@@ -36,10 +36,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // figma-mcp-server.ts
 const mcp_types_1 = require("./lib/mcp-types");
 const WebSocketModule = __importStar(require("ws"));
-const config_1 = require("./config");
+const figma_config_1 = require("./figma-config");
 // Set up WebSocket server to communicate with the Figma plugin
-const wss = new WebSocketModule.Server({ port: config_1.figmaConfig.websocket.port });
-console.log(`WebSocket server started on port ${config_1.figmaConfig.websocket.port}`);
+const wss = new WebSocketModule.Server({ port: figma_config_1.figmaConfig.websocket.port });
+console.log(`WebSocket server started on port ${figma_config_1.figmaConfig.websocket.port}`);
 let figmaConnection = null;
 wss.on('connection', (ws) => {
     console.log('Figma plugin connected');
@@ -832,8 +832,8 @@ figmaCapability.addResource(exportResource);
 figmaCapability.addResource(nlpResource);
 mcpServer.addCapability(figmaCapability);
 // Start the MCP server
-mcpServer.listen(config_1.figmaConfig.mcpServer.port).then(() => {
-    console.log(`Figma MCP Server started on port ${config_1.figmaConfig.mcpServer.port}`);
+mcpServer.listen(figma_config_1.figmaConfig.mcpServer.port).then(() => {
+    console.log(`Figma MCP Server started on port ${figma_config_1.figmaConfig.mcpServer.port}`);
 }).catch((error) => {
     console.error('Failed to start Figma MCP Server:', error);
 });
